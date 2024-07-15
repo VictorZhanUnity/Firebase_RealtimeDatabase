@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "230591047517",
+    "firebase_url": "https://fir-auth-8dc9f-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "fir-auth-8dc9f",
+    "storage_bucket": "fir-auth-8dc9f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230591047517:android:9005dffc78f59a90c52ab4",
+        "android_client_info": {
+          "package_name": "com.VictorDev.FirebaseAuth"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "230591047517-1ol2av79fduri949dorc7795sljg2uvp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.VictorDev.FirebaseAuth",
+            "certificate_hash": "56dba37a0c9b5a0b9ca10f7a64a124c059c513d4"
+          }
+        },
+        {
+          "client_id": "230591047517-csid3nlcrs9nbfnd7kqrm6a5a864p56u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.VictorDev.FirebaseAuth",
+            "certificate_hash": "9848cb882cb2c6137936908b6265057c5e560ac8"
+          }
+        },
+        {
+          "client_id": "230591047517-o6k2qdog1giq9bcufu3coqhlk2umhvjq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeMqmMFIZQRzMNS3HVnV0YlScaXwzhK6g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "230591047517-o6k2qdog1giq9bcufu3coqhlk2umhvjq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
