@@ -5,7 +5,7 @@ public class GameManager : MonoBehaviour
 {
     public UserData userData;
 
-    public RealtimeManager realtimeManager;
+    public RealtimeDBManager realtimeManager;
 
     private void Awake()
     {
