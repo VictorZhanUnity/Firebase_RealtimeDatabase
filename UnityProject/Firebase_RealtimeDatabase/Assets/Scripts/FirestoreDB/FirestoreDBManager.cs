@@ -14,35 +14,59 @@ namespace VictorDev.FirebaseUtils
 
         private void Awake() => dbInstance = FirebaseFirestore.DefaultInstance;
 
+
+
         /// <summary>
         /// 擷取Collection底下所有的Document與其欄位值
+        /// <para>+ onSuccessed：回傳 字典{documentId, 字典{欄位, 值}}</para>
+        /// <para>+ orderByName：若不為空，則依照欄位名稱進行排序</para>
+        /// <para>+ isDescending：是否為降冪排序(從最近排到最先前)</para>
         /// </summary>
-       public void GetAllDocuments(string collection)
+        public void GetAllDocuments<T>(string collection, Action<Dictionary<string, T>> onSuccessed, Action onFailed = null, bool isDescending = true, string orderByName = "timestamp")
         {
-            CollectionReference collectionRef = dbInstance.Collection("collection"); // 替换为你的集合名称
-            collectionRef.GetSnapshotAsync().ContinueWithOnMainThread(task => {
+            CollectionReference collectionRef = dbInstance.Collection(collection); // 替换为你的集合名称
+
+            Query query = collectionRef;
+
+            //是否需要排序之判斷
+            if (string.IsNullOrEmpty(orderByName) == false)
+            {
+                query = isDescending ? query.OrderByDescending(orderByName) : query.OrderBy(orderByName);
+            }
+
+            query.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
                 if (task.IsCompleted)
                 {
+                    Dictionary<string, T> result = new Dictionary<string, T>();
+
                     QuerySnapshot snapshot = task.Result;
                     foreach (DocumentSnapshot document in snapshot.Documents)
                     {
-                        Debug.Log("Document ID: " + document.Id + ", Document Data: " + document.ToDictionary());
+                        if (document.Exists)
+                        {
+                            Debug.Log("Document ID: " + document.Id + ", Document Data: " + document.ToDictionary());
+                            result[document.Id] = document.ConvertTo<T>();
+                        }
                     }
+                    onSuccessed?.Invoke(result);
                 }
                 else
                 {
                     Debug.LogError("Failed to get documents: " + task.Exception);
+                    onFailed?.Invoke();
+                    if (onFailed == null) LogOnFailed("GetAllDocuments", task.Exception);
                 }
             });
         }
-
 
         /// <summary>
         /// 擷取資料項 T:資料型別
         /// <para>+ 若有值，回傳其型態</para>
         /// <para>+ 若無值，回傳null</para>
+        /// <para>+ onSuccessed: 回傳T型態之物件</para>
         /// </summary>
-        public void GetData<T>(string collectionName, string documentId, Action<T> onSuccess, Action onFailed)
+        public void GetDocument<T>(string collectionName, string documentId, Action<T> onSuccess, Action onFailed = null)
         {
             GetDocRef(collectionName, documentId).GetSnapshotAsync()
                 .ContinueWithOnMainThread(task =>
@@ -57,35 +81,38 @@ namespace VictorDev.FirebaseUtils
                     else
                     {
                         Debug.LogError("\t [SelectData] Failed to get document: " + task.Exception);
+                        onFailed?.Invoke();
+                        if (onFailed == null) LogOnFailed("CreateDocument", task.Exception);
                     }
                 });
         }
+
         /// <summary>
         /// 新增一個文件Document
         /// <para>+ 若資料庫不存在時，會自動新增資料庫</para>
+        /// <para>+ object data: 可帶入任意類別或字典{string, 任意類型值}</para>
+        /// <para>+ onSuccessed: 回傳documentId (動態產生)</para>
         /// </summary>
-        /// <param name="data">資料欄位(Dictionary)</param>
+        /// <param name="data">資料集 字典{string, object值}</param>
         /// <param name="onSuccessd">成功時回傳其資料項ID值</param>
         public void CreateDocument(object data, string collection, Action<string> onSuccessed = null, Action onFailed = null)
         {
             dbInstance.Collection(collection).AddAsync(data).ContinueWithOnMainThread(
                 task =>
                 {
-                    if (task.IsCompleted)
-                    {
-                        onSuccessed?.Invoke(task.Result.Id);
-                        Debug.Log("\t[CreateDocument] Added document with ID: " + task.Result.Id);
-                    }
+                    if (task.IsCompleted) onSuccessed?.Invoke(task.Result.Id);
                     else
                     {
                         onFailed?.Invoke();
-                        Debug.LogError("\t[CreateDocument] Failed to add document: " + task.Exception);
+                        if (onFailed == null) LogOnFailed("CreateDocument", task.Exception);
                     }
                 });
         }
+
         /// <summary>
         /// 更新資料 / 新增資料
         /// <para>+ 若DocumentID值不存在，則變成以DocumentID進行新增資料</para>
+        /// <para>+ onSuccessed: 回傳documentId</para>
         /// </summary>
         /// <param name="data">資料項內容</param>
         /// <param name="collectionName">集合名稱(資料表)</param>
@@ -94,11 +121,16 @@ namespace VictorDev.FirebaseUtils
          => GetDocRef(collectionName, documentId).SetAsync(data).ContinueWithOnMainThread(task =>
          {
              if (task.IsCompleted) onSuccessed?.Invoke(documentId);
-             else onFailed?.Invoke();
+             else
+             {
+                 onFailed?.Invoke();
+                 if (onFailed == null) LogOnFailed("UpdateData", task.Exception);
+             }
          });
 
         /// <summary>
         /// 刪除資料Document
+        /// <para>+ onSuccessed: 回傳documentId</para>
         /// </summary>
         public void DeleteDocument(string collectionName, string documentId, Action<string> onSuccessed = null, Action onFailed = null)
         {
@@ -113,11 +145,19 @@ namespace VictorDev.FirebaseUtils
                 else
                 {
                     onFailed?.Invoke();
-                    Debug.LogError("\t[DeleteDocument] Failed to delete document: " + task.Exception);
+                    if (onFailed == null) LogOnFailed("DeleteDocument", task.Exception);
                 }
             });
         }
 
+
+
+        /// <summary>
+        /// 取得Document Ref
+        /// </summary>
+        private DocumentReference GetDocRef(string collectionName, string documentId) => dbInstance.Collection(collectionName).Document(documentId);
+
+        #region [>>>同步即時監聽資料]
         /// <summary>
         /// 監聽即時同步更新資料
         /// </summary>
@@ -141,12 +181,11 @@ namespace VictorDev.FirebaseUtils
                 listenerDict.Remove(key);
             }
         }
+        #endregion
 
         /// <summary>
-        /// 取得Document Ref
+        /// 停止所有同步監聽
         /// </summary>
-        private DocumentReference GetDocRef(string collectionName, string documentId) => dbInstance.Collection(collectionName).Document(documentId);
-
         private void OnDestroy()
         {
             foreach (string key in listenerDict.Keys)
@@ -156,27 +195,6 @@ namespace VictorDev.FirebaseUtils
             listenerDict.Clear();
         }
 
-        public void AddProduct()
-        {
-            CollectionReference productsRef = dbInstance.Collection("products");
-            Dictionary<string, object> productData = new Dictionary<string, object>
-        {
-            { "Name", "Sample Product" },
-            { "Price", 19.99 },
-            { "Stock", 100 }
-        };
-
-            productsRef.AddAsync(productData).ContinueWithOnMainThread(task =>
-            {
-                if (task.IsCompleted)
-                {
-                    Debug.Log("Product successfully added!");
-                }
-                else
-                {
-                    Debug.LogError("Failed to add product: " + task.Exception);
-                }
-            });
-        }
+        private void LogOnFailed(string funcName, AggregateException error) => Debug.LogWarning($"\t[{funcName}] onFailed: {error}");
     }
 }
